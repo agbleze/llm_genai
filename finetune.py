@@ -134,4 +134,140 @@ accuracy_bert = fine_tune_and_evaluate(model_name="bert-base-uncased",
                                        )
 # %%
 print(f"Accuracy of BERT on IMDB: {accuracy_bert}")
+# %%  L1 regularization
+import torch.optim as optim
+
+optimizer_l1 = optim.Adam(model.parameters(), lr=0.001)
+
+lambda_l1 = 0.01  # Regularization strength
+
+def l1_regularization(model, lambda_l1):
+    l1_norm = 0
+    for param in model.parameters():
+        l1_norm += torch.sum(torch.abs(param))
+    return lambda_l1 * l1_norm
+
+
+def train_step_l1(model, optimizer, criterion, data, target, lambda_l1):
+    optimizer.zero_grad()
+    output = model(data)
+    loss = criterion(output, target) + l1_regularization(model, lambda_l1)
+    loss.backward()
+    optimizer.step()
+    return loss
+# %% Mixed Precision Training
+
+from torch.cuda.amp import autocast, GradScaler
+from torch.utils.data import DataLoader, TensorDataset
+import torch.nn as nn
+
+# %%
+class SimpleModel(nn.Module):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        
+        self.linear = nn.Linear(input_size, output_size)
+        
+    def forward(self, x):
+        return self.linear(x)
+# %%
+input_size = 10
+output_size = 5
+batch_size = 32
+data = torch.randn(100, input_size)
+target = torch.randn(100, output_size)
+dataset = TensorDataset(data, target)
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+
+#%%
+
+
+def train_mixed_precision(model, dataloader, criterion, optimizer, device, num_epochs=5):
+    model.to(device)
+    model.train()
+    scaler = GradScaler()
+    
+    for epoch in range(num_epochs):
+        for i, (inputs, targets) in enumerate(dataloader):
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            
+            optimizer.zero_grad()
+            
+            with autocast():
+                outputs = model(inputs)
+                loss = criterion(outputs, targets)
+                
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                
+            if (i + 1) % len(dataloader) == 0:
+                print(f"Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dataloader)}], Loss: {loss.item():.4f}")
+
+# %%
+model = SimpleModel(input_size, output_size)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+train_mixed_precision(model, dataloader, criterion, optimizer, num_epochs=5, device=device)
+# %%  distrobuted training: data parallelism
+import torch.distributed as dist
+import torch.multiprocessing as mp
+
+# %%
+def train_process(rank, world_size, dataset, batch_size, epochs, learning_rate):
+    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+    
+    input_size = 10
+    output_size = 5
+    model = SimpleModel(input_size, output_size).to(rank)
+    
+    model = nn.parallel.DistributedDataParallel(model, device_ids=[rank])
+    
+    criterion = nn.MSELoss().to(rank)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    
+    for epoch in range(epochs):
+        for data, target in dataloader:
+            data, target = data.to(rank), target.to(rank)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output, target)
+            loss.backward()
+            optimizer.step()
+            print(f"Rank: {rank} Epoch: {epoch+1}, Loss: {loss.item():.4f}")
+            
+    dist.destroy_process_group()
+    
+
+def run_distributed_training():
+    """
+    
+    """
+    world_size = 4
+    batch_size = 32
+    epochs = 10
+    learning_rate = 0.001
+    
+    input_size = 10
+    output_size = 5
+    num_samples = 1000
+    data = torch.randn(num_samples, input_size)
+    target = torch.randn(num_samples, output_size)
+    dataset = TensorDataset(data, target)
+    
+    mp.spawn(train_process, 
+             args=(world_size, dataset, batch_size, epochs, learning_rate),
+             nprocs=world_size,
+             join=True
+             )
+    
+
+# %%
+run_distributed_training()
 # %%
