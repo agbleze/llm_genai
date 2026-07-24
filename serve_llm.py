@@ -14,4 +14,20 @@ except Exception as e:
     logging.error(f"Error occurred while loading the model: {e}")
 
 
+@app.route('/generate', methods=['POST'])
+def generate_text():
+    try:
+        data = request.get_json()
+        prompt = data['prompt']
+        logging.debug(f"Received prompt: {prompt}")
+        
+        generated_text = generator(prompt, max_length=50, num_return_sequences=1)['generated_text']
+        logging.debug(f"Generated text: {generated_text}")
+        return jsonify({'generated_text': generated_text})
+    except Exception as e:
+        logging.error(f"Error generating text: {e}")
+        return jsonify(f'error: {str(e)}')
 
+
+if __name__ == '__main__':
+    app.run(debug=True)
