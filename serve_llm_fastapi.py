@@ -5,3 +5,4 @@ from transformers import pipeline
 import logging
 
 
+logging.basicConfig(level=logging.DEBUG)
