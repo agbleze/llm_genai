@@ -6,3 +6,10 @@ import logging
 
 
 logging.basicConfig(level=logging.DEBUG)
+
+app = FastAPI()
+
+try:
+    generator = pipeline('text-generation', model='gpt2')
+
+
