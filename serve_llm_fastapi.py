@@ -38,3 +38,5 @@ async def generate_text(request: TextGenerationRequest):
     except Exception as e:
         logging.error(f"Error generating text: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
