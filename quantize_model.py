@@ -10,3 +10,5 @@ def quantize_model(model):
     model_f32_prepared = torch.quantization.prepare(model)
     model_int8 = torch.quantization.convert(model_f32_prepared)
     return model_int8
+
+
