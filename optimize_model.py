@@ -2,7 +2,7 @@
 #%%
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
+import tensorrt as trt
 #%%
 model_id = "gpt2"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -44,3 +44,6 @@ torch.onnx.export(model,
                   )
 
 # %%
+def build_trt_engine(onnx__path, fp16=True, max_workspace_size_gb=4):
+    logger = trt.logger(trt.logger.WARNING)
+    
