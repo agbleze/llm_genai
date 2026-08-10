@@ -26,7 +26,7 @@ def generate_text():
         return jsonify({'generated_text': generated_text})
     except Exception as e:
         logging.error(f"Error generating text: {e}")
-        return jsonify(f'error: {str(e)}')
+        return jsonify(f'error: {str(e)}'), 500
 
 
 if __name__ == '__main__':
