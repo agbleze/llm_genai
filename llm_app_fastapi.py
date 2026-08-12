@@ -33,8 +33,8 @@ async def generate_text(request: TextGenerationRequest):
                                     num_length_sequences=request.num_return_sequences
                                     )
         generated_text = generated_texts[0]['generated_text']
-        logging.debug(f"Generated text: {generate_text}")
-        return TextGenerationResponse(generate_text=generate_text)
+        logging.debug(f"Generated text: {generated_text}")
+        return TextGenerationResponse(generated_text=generated_text)
     except Exception as e:
         logging.error(f"Error generating text: {e}")
         raise HTTPException(status_code=500, detail=str(e))
